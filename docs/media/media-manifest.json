@@ -1,0 +1,105 @@
+{
+  "source": "2026-10-29 14-50-45.mp4",
+  "source_sha256": "0b562c8dec37171cc522846c5d276746b2cf4707d28f26b4ac8553f855f147ce",
+  "duration_seconds": 116.1,
+  "source_fps": 30.0,
+  "crop": {
+    "x": 0,
+    "y": 80,
+    "width": 1270,
+    "height": 608
+  },
+  "privacy": "Barras do navegador, favoritos e área externa ao aplicativo removidos. Os gráficos não foram retocados.",
+  "logo_sha256": "ed914a0cb650d4ec4d560ea68a8bd435ede39e2b78d0d37262b4b104e8028d2a",
+  "screenshots": [
+    {
+      "file": "n8n-complete.jpg",
+      "second": 10,
+      "caption": "Canvas do fluxo completo no n8n"
+    },
+    {
+      "file": "n8n-backend.jpg",
+      "second": 38,
+      "caption": "Backend de leitura com Webhook, validação e resposta"
+    },
+    {
+      "file": "overview.jpg",
+      "second": 44,
+      "caption": "Overview: indicadores e trajetória de receita"
+    },
+    {
+      "file": "sales.jpg",
+      "second": 56,
+      "caption": "Sales Analytics com recorte comercial"
+    },
+    {
+      "file": "forecast.jpg",
+      "second": 62,
+      "caption": "Receita prevista e comparação com baseline"
+    },
+    {
+      "file": "churn.jpg",
+      "second": 76,
+      "caption": "Probabilidades de churn e explicabilidade"
+    },
+    {
+      "file": "segmentation.jpg",
+      "second": 84,
+      "caption": "Segmentação RFM e perfis"
+    },
+    {
+      "file": "analyst.jpg",
+      "second": 103,
+      "caption": "Analista com evidências e modo identificado"
+    },
+    {
+      "file": "models.jpg",
+      "second": 108,
+      "caption": "Comparação dos modelos e backtesting"
+    },
+    {
+      "file": "quality.jpg",
+      "second": 110,
+      "caption": "Qualidade e reconciliação"
+    },
+    {
+      "file": "pipelines.jpg",
+      "second": 114,
+      "caption": "Monitoramento e histórico de execuções"
+    }
+  ],
+  "clips": [
+    {
+      "file": "workflow-tour.gif",
+      "start": 10,
+      "end": 18,
+      "fps": 3,
+      "audio": false,
+      "caption": "Percurso no canvas n8n"
+    },
+    {
+      "file": "dashboard-tour.gif",
+      "start": 40,
+      "end": 56,
+      "fps": 3,
+      "audio": false,
+      "caption": "Overview, filtros e exploração comercial"
+    },
+    {
+      "file": "forecast-tour.gif",
+      "start": 58,
+      "end": 64,
+      "fps": 3,
+      "audio": false,
+      "caption": "Inspeção da previsão de receita"
+    },
+    {
+      "file": "analyst-tour.gif",
+      "start": 91,
+      "end": 101,
+      "fps": 3,
+      "audio": false,
+      "caption": "Analista e evidências estruturadas"
+    }
+  ]
+}

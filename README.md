@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="frontend/public/branding/predictive-bi.png" alt="Logo Predictive BI — Intelligent Analytics Platform" width="340"/>
+
 # Predictive BI
 
 ### Intelligent Analytics Platform · Backend em workflows n8n
@@ -17,6 +19,12 @@ Um laboratório de automação, engenharia de dados, analytics e IA aplicada, co
 </div>
 
 ---
+
+## Demonstração em movimento
+
+![Navegação real pelo dashboard e seus filtros](docs/media/dashboard-tour.gif)
+
+Gravação real do projeto, com dados demonstrativos. Os trechos abaixo foram extraídos do vídeo fornecido pelo autor; barras e favoritos do navegador foram removidos.
 
 ## Índice
 
@@ -378,6 +386,10 @@ Se os dois primeiros funcionarem e o webhook não existir, confira o caminho do 
 
 ## Os sete workflows explicados
 
+![Percurso pelo canvas do n8n](docs/media/workflow-tour.gif)
+
+![Backend de leitura do dashboard no n8n](docs/media/n8n-backend.jpg)
+
 O [catálogo de nós](docs/workflow-catalog.md) lista os nomes e tipos reais presentes nos JSONs. As fontes dos arquivos são `scripts/generate_workflows.py`, `scripts/generate_n8n_backend.py` e `workflows/code/analytics.cjs`.
 
 | JSON local | Nome no editor | Encadeamento |
@@ -499,6 +511,8 @@ Os filtros comerciais afetam os agregados comerciais. Modelos, segmentos e anali
 
 ### 1. Overview
 
+![Indicadores comerciais e evolução da receita](docs/media/overview.jpg)
+
 **Pergunta:** qual o resultado do recorte e o que merece investigação?
 
 - Leia receita, pedidos, clientes e ticket juntos.
@@ -509,6 +523,8 @@ Os filtros comerciais afetam os agregados comerciais. Modelos, segmentos e anali
 **Exercício:** compare todas as regiões com Sul. Os agregados devem mudar de acordo com o recorte; a métrica do modelo continua ligada à avaliação original.
 
 ### 2. Sales Analytics
+
+![Exploração comercial e filtros](docs/media/sales.jpg)
 
 **Pergunta:** como a receita se distribui por produtos, canais e tempo?
 
@@ -522,6 +538,8 @@ Os filtros comerciais afetam os agregados comerciais. Modelos, segmentos e anali
 
 ### 3. Revenue Forecast
 
+![Previsão semanal, erro e baseline](docs/media/forecast.jpg)
+
 **Pergunta:** qual é a referência de receita para as oito semanas seguintes ao histórico?
 
 - A série observada usa semanas completas.
@@ -533,6 +551,8 @@ Os filtros comerciais afetam os agregados comerciais. Modelos, segmentos e anali
 **Exercício:** WAPE de 11% é erro agregado no teste; não significa “89% de acurácia” nem margem garantida de ±11% para cada semana.
 
 ### 4. Customer Churn
+
+![Distribuição dos riscos e explicabilidade](docs/media/churn.jpg)
 
 **Pergunta:** quem tem maior risco de não comprar nos próximos 90 dias?
 
@@ -546,6 +566,8 @@ Os filtros comerciais afetam os agregados comerciais. Modelos, segmentos e anali
 
 ### 5. Segmentation
 
+![Perfis de clientes no espaço RFM](docs/media/segmentation.jpg)
+
 **Pergunta:** quais perfis de comportamento a base contém?
 
 - Cada ponto é um cliente; cor representa cluster.
@@ -556,6 +578,8 @@ Os filtros comerciais afetam os agregados comerciais. Modelos, segmentos e anali
 **Exercício:** compare um grupo frequente com outro de alta recência e proponha ações distintas, indicando quais dados faltam para medir retorno.
 
 ### 6. AI Analyst
+
+![Analista com evidências estruturadas](docs/media/analyst.jpg)
 
 Use perguntas como:
 
@@ -570,6 +594,8 @@ Abra **Ver evidência** para conferir fonte e período. Observe **Qwen local**, 
 
 ### 7. Model Performance
 
+![Comparação temporal dos modelos](docs/media/models.jpg)
+
 **Pergunta:** o resultado veio de avaliação adequada e supera uma referência simples?
 
 - Compare ROC-AUC, PR-AUC, precisão, revocação, F1 e Brier no mesmo teste.
@@ -582,6 +608,8 @@ Abra **Ver evidência** para conferir fonte e período. Observe **Qwen local**, 
 
 ### 8. Data Quality
 
+![Checks de integridade e reconciliação](docs/media/quality.jpg)
+
 **Pergunta:** a base está íntegra e reconciliada?
 
 - Confira os nove checks individualmente.
@@ -592,6 +620,8 @@ Abra **Ver evidência** para conferir fonte e período. Observe **Qwen local**, 
 O total de “inconsistências” na interface mistura contagens com diferença monetária em centavos do check de reconciliação. Para diagnosticar, leia cada check; esse total não é uma contagem homogênea de linhas inválidas.
 
 ### 9. Pipeline Monitoring
+
+![Execuções e rastreabilidade](docs/media/pipelines.jpg)
 
 **Pergunta:** qual processamento ocorreu, quando e com qual resultado?
 
@@ -930,22 +960,50 @@ Abra `http://127.0.0.1:5180`. O proxy Vite encaminha chamadas ao worker. Para ou
 
 ## Vídeo, prints e identidade visual
 
-O autor forneceu a gravação `2026-10-29 14-50-45.mp4` e o logo do Predictive BI. A transferência desses anexos ao processo local falhou por restrição de rede nesta revisão. **A extração de prints/cortes e a aplicação do logo continuam pendentes; não foram substituídas por imagens fictícias.**
+O logo original do autor aparece no topo deste README, no menu do dashboard e como ícone da aba. O PNG foi preservado sem redesenho. A gravação de origem tem **116,1 segundos**, 1280 × 720 e 30 quadros por segundo.
 
-[`scripts/export_demo_media.py`](scripts/export_demo_media.py) permite extrair quadros e cortes silenciosos quando os arquivos estiverem disponíveis localmente. Copia o PNG original para `docs/media/` e `frontend/public/branding/`, sem redesenhá-lo. OpenCV é opcional para documentação:
+Foram selecionados **11 prints e quatro cortes animados em GIF**, preservando os gráficos e valores capturados. As barras e favoritos do navegador e a faixa preta inferior foram recortados. Os GIFs são silenciosos, usam três quadros por segundo e resolução reduzida para carregar no GitHub. Eles mostram a interface registrada, não uma nova execução nem a aplicação posterior do logo.
+
+### Cortes da gravação
+
+| Trecho | Intervalo no original | Conteúdo |
+| --- | --- | --- |
+| [Canvas n8n](docs/media/workflow-tour.gif) | 00:10–00:18 | Navegação pelos nós e conexões |
+| [Dashboard e filtros](docs/media/dashboard-tour.gif) | 00:40–00:56 | Overview e exploração comercial |
+| [Previsão de receita](docs/media/forecast-tour.gif) | 00:58–01:04 | Série e resultados da previsão |
+| [Analista de IA](docs/media/analyst-tour.gif) | 01:31–01:41 | Interface e evidências persistidas |
+
+![Inspeção da previsão de faturamento](docs/media/forecast-tour.gif)
+
+![Analista e evidências verificáveis](docs/media/analyst-tour.gif)
+
+### Canvas completo
+
+![Visão do fluxo completo no n8n](docs/media/n8n-complete.jpg)
+
+Os nove prints das páginas estão distribuídos pelo guia de análise acima. Instantes, recorte e hashes dos originais estão em [media-manifest.json](docs/media/media-manifest.json). O vídeo original foi preservado e não integra o repositório; apenas as seleções revisadas foram publicadas.
+
+Para reproduzir exatamente esta seleção, com recorte e GIFs, use o gerador editorial versionado:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install opencv-python Pillow
+.\.venv\Scripts\python.exe scripts/prepare_publication_media.py `
+  --video 'C:\caminho\2026-10-29 14-50-45.mp4' `
+  --logo 'C:\caminho\logo.png'
+```
+
+O utilitário [export_demo_media.py](scripts/export_demo_media.py) pode extrair outros instantes e cortes MP4 silenciosos. Os GIFs desta edição foram preparados com OpenCV/Pillow. OpenCV é uma dependência opcional de documentação:
 
 ```powershell
 .\.venv\Scripts\python.exe -m pip install opencv-python
 .\.venv\Scripts\python.exe scripts/export_demo_media.py `
   --video 'C:\caminho\gravacao.mp4' `
   --logo 'C:\caminho\logo.png' `
-  --frames '10,30,60' `
-  --clips '10:20,30:40'
+  --frames '10,38,44,56,62,76,84,103,108,110,114' `
+  --clips '10:18,40:56,58:64,91:101'
 ```
 
-Os tempos acima são exemplos e devem ser ajustados após assistir ao vídeo. O script grava um manifesto com duração, quadros e intervalos, não altera a gravação original e não extrai áudio. A integração visual do logo requer o PNG e a revisão do dashboard.
-
-Revise a mídia antes de publicar para evitar e-mails, credenciais e telas de outros projetos. Um vídeo de interface não substitui a evidência estatística de avaliação.
+O utilitário básico exporta quadros sem o recorte editorial desta galeria; revise barras do navegador e outros dados antes de publicar material adicional. Capturas de interface não substituem as evidências estatísticas das avaliações.
 
 ## Limites e próximos passos
 
@@ -974,7 +1032,7 @@ Projeto de **Vinicius de Souza Santos**, com assistência de IA na engenharia e 
 
 ### Evolução possível
 
-Paginação/agregação no banco; migrações; autenticação; CI integrado PostgreSQL/n8n/Ollama; monitoramento de drift; intervalos de previsão; avaliação por coorte; SHAP do próprio modelo selecionado; promoção controlada de artefatos e demonstração visual após recuperar os anexos.
+Paginação/agregação no banco; migrações; autenticação; CI integrado PostgreSQL/n8n/Ollama; monitoramento de drift; intervalos de previsão; avaliação por coorte; SHAP do próprio modelo selecionado; promoção controlada de artefatos.
 
 Esses itens são propostas de evolução, não funcionalidades declaradas como concluídas.
 
