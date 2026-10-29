@@ -1,0 +1,6 @@
+interface:
+  display_name: "Predictive BI Engineer"
+  short_description: "Engenharia de BI preditivo, n8n e IA local"
+  default_prompt: "Use $predictive-bi-engineer para implementar e verificar a próxima tarefa do Predictive-BI."
+policy:
+  allow_implicit_invocation: true

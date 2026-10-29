@@ -1,0 +1,224 @@
+{
+  "demonstrative": true,
+  "source": "Resultados persistidos no app_state do banco demonstrativo; extração somente leitura.",
+  "manifest": {
+    "demonstrative": true,
+    "seed": 42,
+    "start": "2023-01-01",
+    "end": "2026-09-30",
+    "orders": 47784,
+    "customers": 1200,
+    "products": 60,
+    "grain": "Um pedido contém um produto; receita líquida por competência em BRL.",
+    "sha256": "5657853435b5a7b5aa8ff9b1cbff7219f0f60916beda7b383c50d5fda460bad2"
+  },
+  "forecast": {
+    "selected": "Random Forest",
+    "metrics": {
+      "mae": 46552.12394311213,
+      "rmse": 52439.1576194029,
+      "wape": 0.11354776193681161
+    },
+    "baseline_metrics": {
+      "mae": 57528.91125,
+      "rmse": 62340.031529479806,
+      "wape": 0.1403218277877412
+    },
+    "validation_scores": {
+      "Ridge sazonal": 0.09329709417841395,
+      "Random Forest": 0.08635496526333933,
+      "Baseline sazonal 52 semanas": 0.1227937297405953
+    },
+    "trained_at": "2026-10-29T16:56:29.694703+00:00",
+    "interval_note": "Sem intervalo de confiança validado; previsão pontual."
+  },
+  "churn": {
+    "selected": "Random Forest",
+    "threshold": 0.5000000000000001,
+    "snapshots": {
+      "train": [
+        "2024-06-30",
+        "2024-12-31"
+      ],
+      "validation": "2025-06-30",
+      "test": "2026-03-31",
+      "inference": "2026-09-30",
+      "label": "Sem compra concluída nos 90 dias seguintes"
+    },
+    "baseline": {
+      "roc_auc": 0.5,
+      "pr_auc": 0.4594820384294068,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "brier": 0.28805755990899967
+    }
+  },
+  "churn_candidates": [
+    {
+      "name": "Regressão logística",
+      "validation": {
+        "roc_auc": 0.8745723624650982,
+        "pr_auc": 0.8341715668983988,
+        "precision": 0.8291139240506329,
+        "recall": 0.656641604010025,
+        "f1": 0.7328671328671329,
+        "brier": 0.12654477892585342
+      },
+      "test": {
+        "roc_auc": 0.9180413095405366,
+        "pr_auc": 0.9203784367352368,
+        "precision": 0.9221967963386728,
+        "recall": 0.7327272727272728,
+        "f1": 0.8166160081053698,
+        "brier": 0.10735100344576967
+      },
+      "threshold": 0.5500000000000002
+    },
+    {
+      "name": "Random Forest",
+      "validation": {
+        "roc_auc": 0.8813764449145678,
+        "pr_auc": 0.8388860405646311,
+        "precision": 0.799410029498525,
+        "recall": 0.6791979949874687,
+        "f1": 0.7344173441734417,
+        "brier": 0.12298893736020988
+      },
+      "test": {
+        "roc_auc": 0.9318687649290431,
+        "pr_auc": 0.9344585200437625,
+        "precision": 0.9362186788154897,
+        "recall": 0.7472727272727273,
+        "f1": 0.8311425682507584,
+        "brier": 0.10148608870429343
+      },
+      "threshold": 0.5000000000000001
+    },
+    {
+      "name": "XGBoost",
+      "validation": {
+        "roc_auc": 0.8814145630235284,
+        "pr_auc": 0.8371113402696506,
+        "precision": 0.7913043478260869,
+        "recall": 0.6842105263157895,
+        "f1": 0.7338709677419355,
+        "brier": 0.12453918159008026
+      },
+      "test": {
+        "roc_auc": 0.9292721652381621,
+        "pr_auc": 0.9308014013925044,
+        "precision": 0.9279279279279279,
+        "recall": 0.7490909090909091,
+        "f1": 0.8289738430583501,
+        "brier": 0.10252108424901962
+      },
+      "threshold": 0.5000000000000001
+    }
+  ],
+  "explanation": {
+    "method": "SHAP TreeExplainer",
+    "explained_model": "XGBoost",
+    "sample_size": 128,
+    "features": [
+      {
+        "feature": "recency",
+        "importance": 1.3120553493499756
+      },
+      {
+        "feature": "tenure",
+        "importance": 0.5364081263542175
+      },
+      {
+        "feature": "monetary",
+        "importance": 0.41737282276153564
+      },
+      {
+        "feature": "frequency",
+        "importance": 0.27726513147354126
+      },
+      {
+        "feature": "avg_ticket",
+        "importance": 0.1016300693154335
+      },
+      {
+        "feature": "frequency_previous",
+        "importance": 0.09571606665849686
+      }
+    ]
+  },
+  "segmentation": {
+    "silhouette": 0.6186570211444086,
+    "comparison": [
+      {
+        "k": 3,
+        "silhouette": 0.6186570211444086
+      },
+      {
+        "k": 4,
+        "silhouette": 0.5748311373722776
+      },
+      {
+        "k": 5,
+        "silhouette": 0.5745532511698216
+      }
+    ],
+    "as_of": "2026-09-30",
+    "trained_at": "2026-10-29T16:56:30.943269+00:00"
+  },
+  "quality": {
+    "passed": 9,
+    "total": 9,
+    "checks": [
+      {
+        "name": "Integridade cliente",
+        "errors": 0,
+        "status": "passed"
+      },
+      {
+        "name": "Integridade produto",
+        "errors": 0,
+        "status": "passed"
+      },
+      {
+        "name": "Integridade calendário",
+        "errors": 0,
+        "status": "passed"
+      },
+      {
+        "name": "Receita e descontos",
+        "errors": 0,
+        "status": "passed"
+      },
+      {
+        "name": "Pedidos únicos",
+        "errors": 0,
+        "status": "passed"
+      },
+      {
+        "name": "Quantidades positivas",
+        "errors": 0,
+        "status": "passed"
+      },
+      {
+        "name": "Duplicidade na origem",
+        "errors": 0,
+        "status": "passed"
+      },
+      {
+        "name": "Campos ausentes na origem",
+        "errors": 0,
+        "status": "passed"
+      },
+      {
+        "name": "Reconciliação receita em centavos",
+        "errors": 0,
+        "status": "passed"
+      }
+    ],
+    "checked_at": "2026-10-29T16:56:26.874650+00:00",
+    "source_revenue_cents": 6101595772,
+    "loaded_revenue_cents": 6101595772
+  },
+  "tracking": "pending"
+}

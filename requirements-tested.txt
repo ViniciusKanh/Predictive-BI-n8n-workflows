@@ -1,0 +1,16 @@
+# Bibliotecas realmente disponíveis e utilizadas nesta sessão offline.
+fastapi==0.136.3
+uvicorn==0.48.0
+pandas==2.3.3
+numpy==2.4.4
+psycopg==3.3.4
+psycopg-binary==3.3.4
+pydantic==2.13.4
+scikit-learn==1.8.0
+xgboost==3.2.0
+shap==0.51.0
+joblib==1.5.3
+httpx==0.28.1
+python-dotenv==1.2.2
+pytest==9.1.1
+# Dependências opcionais e stack completa: requirements.txt

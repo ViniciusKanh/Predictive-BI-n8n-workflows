@@ -1,0 +1,216 @@
+{
+  "id": "pbi-backend-actions",
+  "name": "Predictive BI | Backend de ações",
+  "active": false,
+  "nodes": [
+    {
+      "id": "cb76ff26-8c93-5df0-98c6-5ca08c1868c7",
+      "name": "Receber pedido do dashboard",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "predictive-bi-actions",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "923b58ac-c923-5fcc-a295-be0a789f28d6"
+    },
+    {
+      "id": "cc9fff27-cdfa-5068-946d-4151f280fbf2",
+      "name": "Validar pedido",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "\nconst request = $input.first().json;\nconst query = request.query || {};\nconst resource = query.resource;\nconst failure = detail => [{json:{ok:false,statusCode:422,body:{detail}}}];\nconst origin = \"http://api:8000\";\n\nif (!['jobs','analyst'].includes(resource)) return failure('Ação desconhecida.');\nconst body = request.body;\nif (!body || typeof body !== 'object' || Array.isArray(body)) return failure('Envie um objeto JSON.');\nif (!['etl','quality','train','infer','insights'].includes(body.pipeline)) return failure('Pipeline inválido.');\nif (resource === 'analyst' && body.pipeline !== 'insights') return failure('O analista aceita somente insights.');\nif (body.question !== undefined && (typeof body.question !== 'string' || body.question.length>1000)) return failure('Pergunta inválida.');\nconst key = request.headers?.['idempotency-key'] || 'n8n-backend-'+$execution.id;\nif (typeof key !== 'string' || key.length>160) return failure('Chave de idempotência inválida.');\nreturn [{json:{ok:true,resource,worker_url:origin+'/api/'+resource,\n  body:{pipeline:body.pipeline,question:body.question || 'Gerar resumo executivo.'},idempotency_key:key}}];\n",
+        "mode": "runOnceForAllItems"
+      },
+      "position": [
+        250,
+        0
+      ]
+    },
+    {
+      "id": "fde643a2-ea12-5d70-ae1a-b1a563afc248",
+      "name": "Pedido válido?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "parameters": {
+        "conditions": {
+          "options": {
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "valid",
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "position": [
+        500,
+        0
+      ]
+    },
+    {
+      "id": "740805e0-45e7-598e-b8d2-41cecae48aac",
+      "name": "Executar serviço especializado",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.worker_url }}",
+        "options": {
+          "timeout": 140000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.body }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Idempotency-Key",
+              "value": "={{ $json.idempotency_key }}"
+            }
+          ]
+        }
+      },
+      "position": [
+        750,
+        -100
+      ]
+    },
+    {
+      "id": "0a2ab2d1-caa3-5b0b-8708-c83167ddb35a",
+      "name": "Preparar resposta da ação",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "\nconst response = $input.first().json;\nconst code = Number(response.statusCode || 200);\nif (code >= 400) return [{json:{statusCode:code,body:response.body || {detail:'Falha no worker'}}}];\nreturn [{json:{statusCode:code,body:response.body}}];",
+        "mode": "runOnceForAllItems"
+      },
+      "position": [
+        1000,
+        -100
+      ]
+    },
+    {
+      "id": "ee917599-88e6-5729-a30b-c3bc056c2375",
+      "name": "Responder ao frontend",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.body }}",
+        "options": {
+          "responseCode": "={{ $json.statusCode }}",
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "X-Predictive-Backend",
+                "value": "n8n"
+              }
+            ]
+          }
+        }
+      },
+      "position": [
+        1250,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Receber pedido do dashboard": {
+      "main": [
+        [
+          {
+            "node": "Validar pedido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar pedido": {
+      "main": [
+        [
+          {
+            "node": "Pedido válido?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pedido válido?": {
+      "main": [
+        [
+          {
+            "node": "Executar serviço especializado",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder ao frontend",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Executar serviço especializado": {
+      "main": [
+        [
+          {
+            "node": "Preparar resposta da ação",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar resposta da ação": {
+      "main": [
+        [
+          {
+            "node": "Responder ao frontend",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Sao_Paulo",
+    "executionTimeout": 180
+  },
+  "pinData": {},
+  "tags": []
+}

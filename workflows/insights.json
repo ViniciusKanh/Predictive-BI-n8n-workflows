@@ -1,0 +1,278 @@
+{
+  "id": "pbi-insights",
+  "name": "Predictive BI | GenAI Insights",
+  "active": false,
+  "nodes": [
+    {
+      "id": "93bad651-3780-5ff0-a50f-2f0bdd892174",
+      "name": "Executar manualmente",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "6dd7bcff-4d39-5a67-961e-b1f5d9ceb5c5",
+      "name": "Agendamento diário",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        160
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "daysInterval": 1,
+              "triggerAtHour": 4,
+              "triggerAtMinute": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "d3d65a5b-6b47-5c11-9dab-efe536e9a69e",
+      "name": "Disparar insights",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://api:8000/api/jobs",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Idempotency-Key",
+              "value": "={{ 'n8n-' + $execution.id + '-insights' }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"pipeline\": \"insights\"}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "id": "9ba47c0d-61d3-5fa3-ae0d-2519fe6ef70d",
+      "name": "Aguardar insights",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {
+        "amount": 2,
+        "unit": "seconds"
+      }
+    },
+    {
+      "id": "dec6c625-6c01-5dea-955c-2b6657acec98",
+      "name": "Consultar insights",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        700,
+        0
+      ],
+      "parameters": {
+        "url": "={{ 'http://api:8000/api/jobs/' + $node['Disparar insights'].json.id }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "id": "29d51784-b56b-58b9-96e6-be55da09d752",
+      "name": "Concluído? insights",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        910,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "09576eb2-e6a1-5f87-b521-000b9a6faa8c",
+              "leftValue": "={{ $json.status === 'success' }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "baf7236f-e407-5cd7-bf24-b29dc9068de9",
+      "name": "Falhou ou expirou? insights",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1130,
+        160
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "1f1600e9-3ef6-5908-8c06-a0eeb321b405",
+              "leftValue": "={{ $json.status === 'failed' || (Date.now() - Date.parse($node['Disparar insights'].json.queued_at)) > 600000 }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "6511b7fa-ba2a-56e3-b4e7-924a0cec54c1",
+      "name": "Registrar falha insights",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        1340,
+        200
+      ],
+      "parameters": {
+        "errorMessage": "Pipeline falhou ou excedeu 10 minutos; consulte o histórico da API."
+      }
+    }
+  ],
+  "connections": {
+    "Executar manualmente": {
+      "main": [
+        [
+          {
+            "node": "Disparar insights",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agendamento diário": {
+      "main": [
+        [
+          {
+            "node": "Disparar insights",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Disparar insights": {
+      "main": [
+        [
+          {
+            "node": "Aguardar insights",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aguardar insights": {
+      "main": [
+        [
+          {
+            "node": "Consultar insights",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar insights": {
+      "main": [
+        [
+          {
+            "node": "Concluído? insights",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Concluído? insights": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Falhou ou expirou? insights",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Falhou ou expirou? insights": {
+      "main": [
+        [
+          {
+            "node": "Registrar falha insights",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Aguardar insights",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Sao_Paulo",
+    "executionTimeout": 1200
+  },
+  "pinData": {},
+  "tags": []
+}

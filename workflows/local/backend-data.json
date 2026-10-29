@@ -1,0 +1,204 @@
+{
+  "id": "pbi-backend-data",
+  "name": "Predictive BI | Backend de leitura",
+  "active": false,
+  "nodes": [
+    {
+      "id": "02c2e93c-2580-5190-8c62-38eba46c94fc",
+      "name": "Receber pedido do dashboard",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "predictive-bi-data",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "63dec52a-1e27-5dbd-9b92-6a08906bc941"
+    },
+    {
+      "id": "4438a524-55b8-51cb-a9c2-d3b386d4fd7c",
+      "name": "Validar pedido",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "\nconst request = $input.first().json;\nconst query = request.query || {};\nconst resource = query.resource;\nconst failure = detail => [{json:{ok:false,statusCode:422,body:{detail}}}];\nconst origin = \"http://127.0.0.1:8101\";\n\nconst allowed = ['analytics','models','quality','pipelines','insights','status','job'];\nif (!allowed.includes(resource)) return failure('Recurso de leitura desconhecido.');\nconst filters = {};\nfor (const key of ['start','end','category','region']) {\n  const value = query[key];\n  if (value !== undefined && (typeof value !== 'string' || value.length > 80)) return failure('Filtro inválido.');\n  filters[key] = value || null;\n}\nfor (const key of ['start','end']) {\n  const value = filters[key];\n  if (value) {\n    const date = new Date(value+'T00:00:00Z');\n    if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(value) || !Number.isFinite(date.getTime()) || date.toISOString().slice(0,10)!==value)\n      return failure('Data inválida.');\n  }\n}\nif (filters.start && filters.end && filters.start > filters.end) return failure('Período invertido.');\nif (resource === 'job' && !/^[a-f0-9]{32}$/.test(query.id || '')) return failure('Identificador de execução inválido.');\nconst target = resource === 'analytics' ? '/internal/orders' : (resource === 'job' ? '/api/jobs/'+query.id : '/api/'+resource);\nreturn [{json:{ok:true,resource,filters,worker_url:origin+target}}];\n",
+        "mode": "runOnceForAllItems"
+      },
+      "position": [
+        250,
+        0
+      ]
+    },
+    {
+      "id": "063850a7-db46-529d-95b4-50a61d669db1",
+      "name": "Pedido válido?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "parameters": {
+        "conditions": {
+          "options": {
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "valid",
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "position": [
+        500,
+        0
+      ]
+    },
+    {
+      "id": "1d380575-5c2f-5baf-b0e1-c4ab86165c28",
+      "name": "Consultar fonte de dados",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.worker_url }}",
+        "options": {
+          "timeout": 140000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "position": [
+        750,
+        -100
+      ]
+    },
+    {
+      "id": "1beb014a-0cf3-50d4-a0ad-aecbbdd5e30b",
+      "name": "Calcular KPIs e montar resposta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "\nconst response = $input.first().json;\nconst code = Number(response.statusCode || 200);\nif (code >= 400) return [{json:{statusCode:code,body:response.body || {detail:'Falha no worker'}}}];\n// Regras comerciais executadas no nó Code do n8n. Nenhuma chamada de rede ocorre aqui.\nfunction calculateAnalytics(inputRows, filters = {}) {\n  const rows = inputRows.filter(row => (!filters.start || row.order_date >= filters.start)\n    && (!filters.end || row.order_date <= filters.end)\n    && (!filters.category || row.category === filters.category)\n    && (!filters.region || row.region === filters.region));\n  if (!rows.length) return {empty:true,demonstrative:true,kpis:{},monthly:[],daily:[],categories:[],\n    regions:[],products:[],channels:[],heatmap:[],orders:[],table_limit:2000,filters};\n  let revenueCents = 0, completed = 0, cancelled = 0;\n  const buyers = new Set(), paidBuyers = new Map(), months = new Map(), days = new Map();\n  const categories = new Map(), regions = new Map(), products = new Map(), channels = new Map(), heat = new Map();\n  let firstDate = rows[0].order_date, lastDate = firstDate;\n  const add = (map, key, cents) => {\n    if (!map.has(key)) map.set(key,{name:key,cents:0,orders:0});\n    const value = map.get(key); value.cents += cents; value.orders++;\n  };\n  for (const row of rows) {\n    const cents = row.revenue_cents;\n    if (!Number.isSafeInteger(cents) || cents < 0) throw new Error('Receita inválida na fonte');\n    revenueCents += cents;\n    buyers.add(row.customer_id);\n    if (row.order_date < firstDate) firstDate = row.order_date;\n    if (row.order_date > lastDate) lastDate = row.order_date;\n    if (row.status === 'completed') {\n      completed++; paidBuyers.set(row.customer_id,(paidBuyers.get(row.customer_id)||0)+1);\n    } else if (row.status === 'cancelled') cancelled++;\n    const month = row.order_date.slice(0,7);\n    if (!months.has(month)) months.set(month,{month,cents:0,orders:0,buyers:new Set()});\n    const bucket = months.get(month); bucket.cents += cents; bucket.orders++; bucket.buyers.add(row.customer_id);\n    add(days,row.order_date,cents); add(categories,row.category,cents); add(regions,row.region,cents);\n    add(products,row.product,cents); add(channels,row.channel,cents);\n    const weekday = (new Date(row.order_date+'T00:00:00Z').getUTCDay()+6)%7;\n    const key = month+'/'+weekday;\n    if (!heat.has(key)) heat.set(key,{month,weekday,cents:0});\n    heat.get(key).cents += cents;\n  }\n  const monthly = [...months.values()].sort((a,b)=>a.month.localeCompare(b.month)).map(r=>({\n    month:r.month,revenue:r.cents/100,orders:r.orders,customers:r.buyers.size,ticket:r.cents/100/r.orders}));\n  const latest = monthly[monthly.length-1], previous = monthly[monthly.length-2];\n  const aggregate = map => [...map.values()].sort((a,b)=>b.cents-a.cents||a.name.localeCompare(b.name)).map(r=>({\n    name:r.name,revenue:r.cents/100,orders:r.orders}));\n  const orderSample = [...rows].sort((a,b)=>b.order_date.localeCompare(a.order_date)||b.order_id-a.order_id).slice(0,2000);\n  return {empty:false,demonstrative:true,\n    kpis:{revenue:revenueCents/100,orders:rows.length,customers:buyers.size,\n      ticket:completed?revenueCents/100/completed:0,cancel_rate:cancelled/rows.length*100,\n      repeat_rate:paidBuyers.size?[...paidBuyers.values()].filter(n=>n>1).length/paidBuyers.size*100:0,\n      monthly_growth:previous?.revenue?(latest.revenue/previous.revenue-1)*100:null,\n      latest_month:latest.month,latest_month_revenue:latest.revenue,start:firstDate,end:lastDate,completed_orders:completed},\n    monthly,daily:[...days.values()].sort((a,b)=>a.name.localeCompare(b.name)).map(r=>({order_date:r.name,revenue:r.cents/100,orders:r.orders})),\n    categories:aggregate(categories),regions:aggregate(regions),products:aggregate(products),channels:aggregate(channels),\n    heatmap:[...heat.values()].sort((a,b)=>a.month.localeCompare(b.month)||a.weekday-b.weekday).map(r=>({month:r.month,weekday:r.weekday,revenue:r.cents/100})),\n    orders:orderSample.map(r=>({order_id:r.order_id,order_date:r.order_date,customer:r.customer,region:r.region,\n      product:r.product,category:r.category,quantity:r.quantity,revenue:r.revenue_cents/100,status:r.status})),\n    table_limit:2000,filters};\n}\n\n\nconst request = $('Validar pedido').first().json;\nconst body = request.resource === 'analytics' ? calculateAnalytics(response.body.rows,request.filters) : response.body;\nreturn [{json:{statusCode:code,body}}];\n",
+        "mode": "runOnceForAllItems"
+      },
+      "position": [
+        1000,
+        -100
+      ]
+    },
+    {
+      "id": "ac739042-d028-5e79-a462-beaa14fb6b9d",
+      "name": "Responder ao frontend",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.body }}",
+        "options": {
+          "responseCode": "={{ $json.statusCode }}",
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "X-Predictive-Backend",
+                "value": "n8n"
+              }
+            ]
+          }
+        }
+      },
+      "position": [
+        1250,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Receber pedido do dashboard": {
+      "main": [
+        [
+          {
+            "node": "Validar pedido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar pedido": {
+      "main": [
+        [
+          {
+            "node": "Pedido válido?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pedido válido?": {
+      "main": [
+        [
+          {
+            "node": "Consultar fonte de dados",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder ao frontend",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar fonte de dados": {
+      "main": [
+        [
+          {
+            "node": "Calcular KPIs e montar resposta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calcular KPIs e montar resposta": {
+      "main": [
+        [
+          {
+            "node": "Responder ao frontend",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Sao_Paulo",
+    "executionTimeout": 180
+  },
+  "pinData": {},
+  "tags": []
+}

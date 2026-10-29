@@ -1,0 +1,1181 @@
+{
+  "id": "pbi-complete",
+  "name": "Predictive BI | Fluxo completo",
+  "active": false,
+  "nodes": [
+    {
+      "id": "fc06e0c2-e126-5573-9243-f97a6d7b7389",
+      "name": "Executar manualmente",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "a360831a-19d6-5963-8009-9e5e9701b152",
+      "name": "Agendamento diário",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        160
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "daysInterval": 1,
+              "triggerAtHour": 2,
+              "triggerAtMinute": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "4f78b4b4-9d77-57d1-a4ba-331073cfa14a",
+      "name": "Disparar etl",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8101/api/jobs",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Idempotency-Key",
+              "value": "={{ 'n8n-' + $execution.id + '-etl' }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"pipeline\": \"etl\"}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "id": "98b829c7-e0b2-5170-9847-f30f1b87afd9",
+      "name": "Aguardar etl",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {
+        "amount": 2,
+        "unit": "seconds"
+      }
+    },
+    {
+      "id": "d5b7b2dd-b28a-565e-a601-6731d689b751",
+      "name": "Consultar etl",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        700,
+        0
+      ],
+      "parameters": {
+        "url": "={{ 'http://127.0.0.1:8101/api/jobs/' + $node['Disparar etl'].json.id }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "id": "efb3cbe0-6e14-55ef-8c60-ca239a5ea2df",
+      "name": "Concluído? etl",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        910,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "96bc445a-46bf-5a68-aefe-d848dad81430",
+              "leftValue": "={{ $json.status === 'success' }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "9344e7f6-9968-5e88-bf5d-51f3a85b5943",
+      "name": "Falhou ou expirou? etl",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1130,
+        160
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "babd4da5-d709-5935-9054-9901d59c3a5d",
+              "leftValue": "={{ $json.status === 'failed' || (Date.now() - Date.parse($node['Disparar etl'].json.queued_at)) > 600000 }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "75fbd735-bf0a-512d-a567-dccf77b35161",
+      "name": "Registrar falha etl",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        1340,
+        200
+      ],
+      "parameters": {
+        "errorMessage": "Pipeline falhou ou excedeu 10 minutos; consulte o histórico da API."
+      }
+    },
+    {
+      "id": "726f2fc6-75d8-5e26-8cf7-72152cbb0092",
+      "name": "Disparar quality",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1560,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8101/api/jobs",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Idempotency-Key",
+              "value": "={{ 'n8n-' + $execution.id + '-quality' }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"pipeline\": \"quality\"}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "id": "382e417f-18fa-5339-8a80-cccb0515afd5",
+      "name": "Aguardar quality",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1780,
+        0
+      ],
+      "parameters": {
+        "amount": 2,
+        "unit": "seconds"
+      }
+    },
+    {
+      "id": "42304af0-2ee6-51c4-89d4-451e510edcaf",
+      "name": "Consultar quality",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2000,
+        0
+      ],
+      "parameters": {
+        "url": "={{ 'http://127.0.0.1:8101/api/jobs/' + $node['Disparar quality'].json.id }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "id": "b017d146-34a0-5eef-a470-1834f27c26e4",
+      "name": "Concluído? quality",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2210,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "96bc445a-46bf-5a68-aefe-d848dad81430",
+              "leftValue": "={{ $json.status === 'success' }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "6a15177e-7f11-5385-b714-112e8e280580",
+      "name": "Falhou ou expirou? quality",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2430,
+        160
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "745607b0-5ee5-55a1-a030-32b33416fa2b",
+              "leftValue": "={{ $json.status === 'failed' || (Date.now() - Date.parse($node['Disparar quality'].json.queued_at)) > 600000 }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "7d406e7c-0ce2-59b3-b6c7-ea60ed39f6dd",
+      "name": "Registrar falha quality",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        2640,
+        200
+      ],
+      "parameters": {
+        "errorMessage": "Pipeline falhou ou excedeu 10 minutos; consulte o histórico da API."
+      }
+    },
+    {
+      "id": "67c61f0b-21aa-5a27-b228-6f2734493567",
+      "name": "Qualidade aprovada?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2460,
+        -100
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ad5e11e1-e9db-5b6e-ae22-3801db2c035b",
+              "leftValue": "={{ $json.result.total > 0 && $json.result.passed === $json.result.total }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "f39beb87-7fb5-5f32-b5f8-826868651a51",
+      "name": "Disparar train",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2860,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8101/api/jobs",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Idempotency-Key",
+              "value": "={{ 'n8n-' + $execution.id + '-train' }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"pipeline\": \"train\"}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "id": "040a4ae9-4317-57c3-951c-6c450e884e1f",
+      "name": "Aguardar train",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        3080,
+        0
+      ],
+      "parameters": {
+        "amount": 2,
+        "unit": "seconds"
+      }
+    },
+    {
+      "id": "409789f0-fa66-5290-91de-505ed335f1ce",
+      "name": "Consultar train",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3300,
+        0
+      ],
+      "parameters": {
+        "url": "={{ 'http://127.0.0.1:8101/api/jobs/' + $node['Disparar train'].json.id }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "id": "b4b7aa3d-534a-5597-99a8-e9feafa9b88e",
+      "name": "Concluído? train",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3510,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "96bc445a-46bf-5a68-aefe-d848dad81430",
+              "leftValue": "={{ $json.status === 'success' }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "8a3f50e9-4adb-5df7-9d42-77de943b966d",
+      "name": "Falhou ou expirou? train",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3730,
+        160
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "1211b671-06cf-5afb-b294-9dd25845e94d",
+              "leftValue": "={{ $json.status === 'failed' || (Date.now() - Date.parse($node['Disparar train'].json.queued_at)) > 600000 }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "ae3494cc-9f51-5bf6-8f2b-4587d24ddc23",
+      "name": "Registrar falha train",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        3940,
+        200
+      ],
+      "parameters": {
+        "errorMessage": "Pipeline falhou ou excedeu 10 minutos; consulte o histórico da API."
+      }
+    },
+    {
+      "id": "04ed338f-72ad-5fcd-942c-1537313d977f",
+      "name": "Disparar infer",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4160,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8101/api/jobs",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Idempotency-Key",
+              "value": "={{ 'n8n-' + $execution.id + '-infer' }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"pipeline\": \"infer\"}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "id": "a79ce327-ced6-5a87-8421-2146b22c98ed",
+      "name": "Aguardar infer",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        4380,
+        0
+      ],
+      "parameters": {
+        "amount": 2,
+        "unit": "seconds"
+      }
+    },
+    {
+      "id": "7d905689-3563-589c-8bd8-e5c471c361f4",
+      "name": "Consultar infer",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4600,
+        0
+      ],
+      "parameters": {
+        "url": "={{ 'http://127.0.0.1:8101/api/jobs/' + $node['Disparar infer'].json.id }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "id": "2a2cadba-372b-5e01-b280-ddb76ee9fa76",
+      "name": "Concluído? infer",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        4810,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "96bc445a-46bf-5a68-aefe-d848dad81430",
+              "leftValue": "={{ $json.status === 'success' }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "023b9e6e-dbfb-586b-b0a7-3ada79ea7a4d",
+      "name": "Falhou ou expirou? infer",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        5030,
+        160
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f650eab1-00dc-5c08-af16-a9215910941e",
+              "leftValue": "={{ $json.status === 'failed' || (Date.now() - Date.parse($node['Disparar infer'].json.queued_at)) > 600000 }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "b569bb60-12d0-55c8-929a-ce6cf751697c",
+      "name": "Registrar falha infer",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        5240,
+        200
+      ],
+      "parameters": {
+        "errorMessage": "Pipeline falhou ou excedeu 10 minutos; consulte o histórico da API."
+      }
+    },
+    {
+      "id": "8bfa4910-6293-502d-b327-ceb1587e2e97",
+      "name": "Disparar insights",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5460,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8101/api/jobs",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Idempotency-Key",
+              "value": "={{ 'n8n-' + $execution.id + '-insights' }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"pipeline\": \"insights\"}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "id": "2e98fedb-cda0-5649-b783-cefe8541117c",
+      "name": "Aguardar insights",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        5680,
+        0
+      ],
+      "parameters": {
+        "amount": 2,
+        "unit": "seconds"
+      }
+    },
+    {
+      "id": "7f9a1518-bf43-5e16-a2e0-f1e61f72a1e0",
+      "name": "Consultar insights",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5900,
+        0
+      ],
+      "parameters": {
+        "url": "={{ 'http://127.0.0.1:8101/api/jobs/' + $node['Disparar insights'].json.id }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "id": "c8178546-a031-593d-9b89-d1b0bd430886",
+      "name": "Concluído? insights",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        6110,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "96bc445a-46bf-5a68-aefe-d848dad81430",
+              "leftValue": "={{ $json.status === 'success' }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "2090b73e-589f-5a41-9b7c-31cb51b12a42",
+      "name": "Falhou ou expirou? insights",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        6330,
+        160
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "9fa2693b-6ce9-5ed9-9e13-c4799eefa9d5",
+              "leftValue": "={{ $json.status === 'failed' || (Date.now() - Date.parse($node['Disparar insights'].json.queued_at)) > 600000 }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "add4ac46-6e19-517f-a414-0ba0d87eda47",
+      "name": "Registrar falha insights",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        6540,
+        200
+      ],
+      "parameters": {
+        "errorMessage": "Pipeline falhou ou excedeu 10 minutos; consulte o histórico da API."
+      }
+    }
+  ],
+  "connections": {
+    "Executar manualmente": {
+      "main": [
+        [
+          {
+            "node": "Disparar etl",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agendamento diário": {
+      "main": [
+        [
+          {
+            "node": "Disparar etl",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Disparar etl": {
+      "main": [
+        [
+          {
+            "node": "Aguardar etl",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aguardar etl": {
+      "main": [
+        [
+          {
+            "node": "Consultar etl",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar etl": {
+      "main": [
+        [
+          {
+            "node": "Concluído? etl",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Concluído? etl": {
+      "main": [
+        [
+          {
+            "node": "Disparar quality",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Falhou ou expirou? etl",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Falhou ou expirou? etl": {
+      "main": [
+        [
+          {
+            "node": "Registrar falha etl",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Aguardar etl",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Disparar quality": {
+      "main": [
+        [
+          {
+            "node": "Aguardar quality",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aguardar quality": {
+      "main": [
+        [
+          {
+            "node": "Consultar quality",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar quality": {
+      "main": [
+        [
+          {
+            "node": "Concluído? quality",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Concluído? quality": {
+      "main": [
+        [
+          {
+            "node": "Qualidade aprovada?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Falhou ou expirou? quality",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Falhou ou expirou? quality": {
+      "main": [
+        [
+          {
+            "node": "Registrar falha quality",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Aguardar quality",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qualidade aprovada?": {
+      "main": [
+        [
+          {
+            "node": "Disparar train",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Registrar falha quality",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Disparar train": {
+      "main": [
+        [
+          {
+            "node": "Aguardar train",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aguardar train": {
+      "main": [
+        [
+          {
+            "node": "Consultar train",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar train": {
+      "main": [
+        [
+          {
+            "node": "Concluído? train",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Concluído? train": {
+      "main": [
+        [
+          {
+            "node": "Disparar infer",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Falhou ou expirou? train",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Falhou ou expirou? train": {
+      "main": [
+        [
+          {
+            "node": "Registrar falha train",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Aguardar train",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Disparar infer": {
+      "main": [
+        [
+          {
+            "node": "Aguardar infer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aguardar infer": {
+      "main": [
+        [
+          {
+            "node": "Consultar infer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar infer": {
+      "main": [
+        [
+          {
+            "node": "Concluído? infer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Concluído? infer": {
+      "main": [
+        [
+          {
+            "node": "Disparar insights",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Falhou ou expirou? infer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Falhou ou expirou? infer": {
+      "main": [
+        [
+          {
+            "node": "Registrar falha infer",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Aguardar infer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Disparar insights": {
+      "main": [
+        [
+          {
+            "node": "Aguardar insights",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aguardar insights": {
+      "main": [
+        [
+          {
+            "node": "Consultar insights",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar insights": {
+      "main": [
+        [
+          {
+            "node": "Concluído? insights",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Concluído? insights": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Falhou ou expirou? insights",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Falhou ou expirou? insights": {
+      "main": [
+        [
+          {
+            "node": "Registrar falha insights",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Aguardar insights",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Sao_Paulo",
+    "executionTimeout": 3600
+  },
+  "pinData": {},
+  "tags": []
+}
